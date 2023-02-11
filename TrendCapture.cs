@@ -82,6 +82,9 @@ namespace cAlgo.Robots
         
         [Parameter("Trend confirm bars", Group = "Strategy", DefaultValue = 60, MinValue = 10, Step = 10)]
         public int TrendConfirmBarCount { get; set; }
+        
+        [Parameter("Early P %", Group = "Strategy", DefaultValue = 5, MinValue = 1, Step = 1)]
+        public double TakeEarlyProfitAtAccountIncreasePercent { get; set; }
       
         // The hours of the day between which it can enter a trade.
         [Parameter("Start hour", Group = "Strategy", DefaultValue = 0, MinValue = 0, Step = 1)]
@@ -211,7 +214,7 @@ namespace cAlgo.Robots
         private void HandleEarlyProfit(Position position)
         {
             if (persistedPositionState.HasTakenEarlyProfit || 
-                position.NetProfit <= Account.Balance * 0.05)
+                position.NetProfit <= Account.Balance * (TakeEarlyProfitAtAccountIncreasePercent / 100.0))
             {
                 return;
             }
