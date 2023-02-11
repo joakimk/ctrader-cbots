@@ -413,7 +413,11 @@ namespace cAlgo.Robots
             var volume = (maxRiskAmountPerTrade / stopLoss) / Symbols.GetSymbol("USDSEK").Ask;
               
             if(MarginAvailable() > riskAmount) {
-                return volume;
+                if(volume < Symbol.VolumeInUnitsMin) {
+                    return null;
+                } else {
+                    return volume;
+                }
             } else {
                 Print("There is not enough margin available in the account to make the planned trade. Skipping.");
                 return null;
