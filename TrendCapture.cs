@@ -57,22 +57,6 @@ namespace cAlgo.Robots
         [Parameter("Max DL %", Group = "Risk", DefaultValue = 8)]
         public double MaxDailyLossPercent { get; set; }
         
-        // Symbol -----------------------------------------------------------------------------
-       
-        // How much margin is needed to buy the minimal volume? E.g. about 60 SEK for 0.01 of US100.
-        [Parameter("Unit cost", Group = "Symbol", DefaultValue = 64.0)]
-        public double CostPerVolumeUnit { get; set; }
-        
-        // You figure out this value by making a manual trade (e.g. on demo) and
-        // then seeing how much was won or lost compared to the pip distance.
-        //
-        // Update it every once in a while from trading history.
-        //
-        // I could not find a way to use Symbol.PipValue to calculate
-        // how much a pip of market is worth based on how big of a volume you have.
-        [Parameter("Amount/Pip", Group = "Symbol", DefaultValue = 0.0104)]
-        public double AmountPerPipForMinimalTradableVolume { get; set; }
-        
         // Strategy ---------------------------------------------------------------------------
 
         [Parameter("Trade upswings?", Group = "Strategy", DefaultValue = true)]
@@ -429,37 +413,27 @@ namespace cAlgo.Robots
                 Account.Balance * (MaxRiskPerTradePercent / 100.0)
             );
 
-            var amountPerMinimalTradableVolume = AmountPerPipForMinimalTradableVolume * stopPips;
-            
-            var volumeUnitsRequested = Math.Floor(maxRiskAmountPerTrade / amountPerMinimalTradableVolume);
-
             // This produces worse results. Looks like it takes too risky trades.
             //var maxVolumeUnitsPossible = Math.Floor(MarginAvailable() / CostPerVolumeUnit);
             
             // This is more correct but produces bad backtest results. Need to reoptimize.
-            /*
+            
             var stopLoss = Symbol.PipSize * stopPips;
             var riskAmount = Account.Balance * MaxRiskPerTradePercent / 100;
             var volume = (maxRiskAmountPerTrade / stopLoss) / Symbols.GetSymbol("USDSEK").Ask;
               
             if(MarginAvailable() > riskAmount) {
                 return volume;
-            */ 
+             
                
-            if(RequestedVolumeIsValid(volumeUnitsRequested)) {
-                return volumeUnitsRequested * Symbol.VolumeInUnitsMin;
+            //if(RequestedVolumeIsValid(volumeUnitsRequested)) {
+             //   return volumeUnitsRequested * Symbol.VolumeInUnitsMin;
             //} else if(maxVolumeUnitsPossible > 0) {
             //    return maxVolumeUnitsPossible * Symbol.VolumeInUnitsMin;
             } else {
                 Print("There is not enough margin available in the account to make the planned trade based on current settings. Skipping.");
                 return null;
             }
-        }
-        
-        private bool RequestedVolumeIsValid(double volumeUnitsRequested) {
-            var marginRequested = volumeUnitsRequested * CostPerVolumeUnit;
-            
-            return MarginAvailable() > marginRequested;
         }
         
         private double MarginAvailable() {
