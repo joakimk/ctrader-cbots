@@ -157,44 +157,74 @@ namespace cAlgo.Robots
         {
         }
         
-        private bool ManageExistingPosition() {
+        private bool ManageExistingPosition()
+        {
             var position = CurrentPosition();
-      
-            if(position == null) {
+        
+            if (position == null)
+            {
                 return false;
             }
-            
-            // Abs since it will be negative for short positions but we want positive pip distances.
-            var initialStopPips = Math.Abs(position.EntryPrice - position.StopLoss.Value) / Symbol.PipSize;
-            var pipsAwayFromStop = Math.Abs(Bars.Last(0).Close - position.StopLoss.Value) / Symbol.PipSize;
-            
-            if(!persistedPositionState.HasChangedToMovingStop &&
-                position.NetProfit > 0 && pipsAwayFromStop > initialStopPips * TrailingStopScale &&
-                !position.TakeProfit.HasValue && !position.HasTrailingStop) {
-                if(!position.ModifyTrailingStop(true).IsSuccessful) {
-                    Print("Failed to set up trailing stop. Closing position and shutting down.");
-                    position.Close();
-                    Stop();
-                }     
-                
-                position.ModifyStopLossPrice(position.EntryPrice);
-                
-                persistedPositionState.HasChangedToMovingStop = true;
-                persistedPositionState.Save();
-            }
-
-            // This can reduce the overall profit a bit, but it also a good thing for morale
-            // to take some profit often. It also evens out the curve a bit (less deep dips).
-            if(position.NetProfit > Account.Balance * 0.05 && !persistedPositionState.HasTakenEarlyProfit) {
-                //if(Bars.Last(1).Close > trendbreak
-                position.ModifyVolume((position.VolumeInUnits / 4) * 3);
-                //position.ModifyStopLossPrice(position.EntryPrice); 
-                persistedPositionState.HasTakenEarlyProfit = true;
-                persistedPositionState.Save();
-            }
-            
+        
+            HandleMovingStop(position);
+            HandleEarlyProfit(position);
+        
             return true;
         }
+        
+        private void HandleMovingStop(Position position)
+        {
+            if (persistedPositionState.HasChangedToMovingStop || 
+                position.NetProfit <= 0 || 
+                position.HasTrailingStop || 
+                position.TakeProfit.HasValue)
+            {
+                return;
+            }
+        
+            // Calculate stop loss values
+            var initialStopPips = Math.Abs(position.EntryPrice - position.StopLoss.Value) / Symbol.PipSize;
+            var pipsAwayFromStop = Math.Abs(Bars.Last(0).Close - position.StopLoss.Value) / Symbol.PipSize;
+        
+            if (pipsAwayFromStop <= initialStopPips * TrailingStopScale)
+            {
+                return;
+            }
+        
+            // Modify trailing stop
+            if (!position.ModifyTrailingStop(true).IsSuccessful)
+            {
+                // If failed to set up trailing stop, close position and shut down
+                Print("Failed to set up trailing stop. Closing position and shutting down.");
+                position.Close();
+                Stop();
+            }
+        
+            // Modify stop loss price to entry price
+            position.ModifyStopLossPrice(position.EntryPrice);
+        
+            // Update persisted position state
+            persistedPositionState.HasChangedToMovingStop = true;
+            persistedPositionState.Save();
+        }
+        
+        private void HandleEarlyProfit(Position position)
+        {
+            if (persistedPositionState.HasTakenEarlyProfit || 
+                position.NetProfit <= Account.Balance * 0.05)
+            {
+                return;
+            }
+        
+            // Reduce position volume and update stop loss price to entry price
+            position.ModifyVolume((position.VolumeInUnits / 4) * 3);
+            position.ModifyStopLossPrice(position.EntryPrice);
+        
+            // Update persisted position state
+            persistedPositionState.HasTakenEarlyProfit = true;
+            persistedPositionState.Save();
+        }
+
                 
         private bool IsOutsideTradingHours() {
             return (Server.Time.Hour < StartHour || Server.Time.Hour > StopHour) ||
