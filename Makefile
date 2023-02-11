@@ -1,2 +1,3 @@
 import:
-	@cp ../cAlgo/Custom\ -\ PROD\ -\ Trend\ Capture/Custom\ -\ PROD\ -\ Trend\ Capture/Custom\ -\ PROD\ -\ Trend\ Capture.cs TrendCapture.cs
+	@cd ../cAlgo && git pull
+	@cp "../cAlgo/Custom - PROD - Trend Capture/Custom - PROD - Trend Capture/Custom - PROD - Trend Capture.cs" TrendCapture.cs

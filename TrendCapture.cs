@@ -188,45 +188,10 @@ namespace cAlgo.Robots
             if(position.NetProfit > Account.Balance * 0.05 && !persistedPositionState.HasTakenEarlyProfit) {
                 //if(Bars.Last(1).Close > trendbreak
                 position.ModifyVolume((position.VolumeInUnits / 4) * 3);
-                //position.ModifyStopLossPrice(position.EntryPrice);
+                //position.ModifyStopLossPrice(position.EntryPrice); 
                 persistedPositionState.HasTakenEarlyProfit = true;
                 persistedPositionState.Save();
             }
-            
-            // Various wip things
-            
-                //var maxVolumeUnitsPossible = Math.Floor(MarginAvailable() / CostPerVolumeUnit);
-                //if(maxVolumeUnitsPossible * Symbol.VolumeInUnitsMin > position.VolumeInUnits) {
-                //    position.ModifyVolume(maxVolumeUnitsPossible * Symbol.VolumeInUnitsMin);
-                //}
-                
-                // This sets very odd things in backtests 1.14 volume?
-                //position.ModifyVolume(position.VolumeInUnits * 6);
-                //position.ModifyVolume(position.VolumeInUnits * 2);
-
-            
-            // things o work on:
-            // break even stop
-            // adding on
-            // "no volume" issues (crash on that to fix all of them)
-            
-            // ideally this ought to be part of entering
-             /*
-            if(pipsAwayFromStop > initialStopPips * 10 && addToPositionStep != 1) {
-                //var maxVolumeUnitsPossible = Math.Floor(MarginAvailable() / CostPerVolumeUnit);
-                //if(position.ModifyVolume(position.VolumeInUnits * 2).IsSuccessful) {
-                   // position.ModifyVolume(position.VolumeInUnits * 2);
-                }
-                addToPositionStep = 1;
-            }
-           
-            else if(position.NetProfit > 0 && pipsAwayFromStop > initialStopPips * 3) {
-                if(!position.ModifyStopLossPrice(position.EntryPrice).IsSuccessful) {
-                    Print("Failed to set break even stop. Closing position and shutting down.");
-                    position.Close();
-                    Stop();
-                }
-            }*/
             
             return true;
         }
@@ -413,25 +378,14 @@ namespace cAlgo.Robots
                 Account.Balance * (MaxRiskPerTradePercent / 100.0)
             );
 
-            // This produces worse results. Looks like it takes too risky trades.
-            //var maxVolumeUnitsPossible = Math.Floor(MarginAvailable() / CostPerVolumeUnit);
-            
-            // This is more correct but produces bad backtest results. Need to reoptimize.
-            
             var stopLoss = Symbol.PipSize * stopPips;
             var riskAmount = Account.Balance * MaxRiskPerTradePercent / 100;
             var volume = (maxRiskAmountPerTrade / stopLoss) / Symbols.GetSymbol("USDSEK").Ask;
               
             if(MarginAvailable() > riskAmount) {
                 return volume;
-             
-               
-            //if(RequestedVolumeIsValid(volumeUnitsRequested)) {
-             //   return volumeUnitsRequested * Symbol.VolumeInUnitsMin;
-            //} else if(maxVolumeUnitsPossible > 0) {
-            //    return maxVolumeUnitsPossible * Symbol.VolumeInUnitsMin;
             } else {
-                Print("There is not enough margin available in the account to make the planned trade based on current settings. Skipping.");
+                Print("There is not enough margin available in the account to make the planned trade. Skipping.");
                 return null;
             }
         }
