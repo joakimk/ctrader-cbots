@@ -1,0 +1,27 @@
+﻿{
+  "Chart": {
+    "Symbol": "US100",
+    "Period": "m1"
+  },
+  "Parameters": {
+    "BotIdentifier": "TC-US100-LONG",
+    "HealthchecksUrl": "",
+    "MaxRiskPerTradePercent": "3",
+    "MaxDailyLossPercent": "3",
+    "TradeDirectionIsBuy": "True",
+    "TradeBothWays": "False",
+    "OnlyTradeUsMarketOpen": "False",
+    "TrendMA": "50",
+    "TrailingStopScale": "5",
+    "StopScale": "1",
+    "MinDistanceToHighestPriceInPips": "50",
+    "HighLookbackBars": "10",
+    "TrendLookbackDistance": "70",
+    "TrendConfirmBarCount": "30",
+    "TakeEarlyProfitAtAccountIncreasePercent": "26",
+    "PercentToCaptureEarly": "25",
+    "StartHour": "16",
+    "StopHour": "18",
+    "Source": "Close"
+  }
+}
