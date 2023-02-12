@@ -62,7 +62,13 @@ namespace cAlgo.Robots
 
         [Parameter("Trade upswings?", Group = "Strategy", DefaultValue = true)]
         public bool TradeDirectionIsBuy { get; set; }
-
+        
+        [Parameter("Trade both?", Group = "Strategy", DefaultValue = false)]
+        public bool TradeBothWays { get; set; }
+        
+        [Parameter("Trade only US open?", Group = "Strategy", DefaultValue = false)]
+        public bool OnlyTradeUsMarketOpen { get; set; }
+      
         [Parameter("Trend MA", Group = "Strategy", DefaultValue = 50, MinValue = 3, Step = 1)]
         public int TrendMA { get; set; }
         
@@ -239,8 +245,12 @@ namespace cAlgo.Robots
 
                 
         private bool IsOutsideTradingHours() {
-            return (Server.Time.Hour < StartHour || Server.Time.Hour > StopHour) ||
-                UsMarketRecentlyOpened();
+            if(OnlyTradeUsMarketOpen) {
+                return !UsMarketRecentlyOpened();
+            } else {
+                return (Server.Time.Hour < StartHour || Server.Time.Hour > StopHour) ||
+                    UsMarketRecentlyOpened();
+            }
         }
         
         // Don't enter when the US market has recently opened. It
@@ -250,7 +260,11 @@ namespace cAlgo.Robots
         }
         
         private void EnterNewPosition() {
-            if(TradeDirectionIsBuy) {
+            if(TradeBothWays) {
+                EnterBullMarket();
+                EnterBearMarket();
+            }
+            else if(TradeDirectionIsBuy) {
                 EnterBullMarket();
             } else {
                 EnterBearMarket();
