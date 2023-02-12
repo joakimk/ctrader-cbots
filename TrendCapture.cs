@@ -36,6 +36,7 @@ using cAlgo.API.Internals;
 // - Better entries.
 // - Adding on to winning positions to make them bigger.
 // - Selling part of positions when the market pushes quickly and rebuying when it pulls back.
+// - Possibly limit max daily reversal, e.g. if you win 1000, only allow max 300 loss after that.
 
 namespace cAlgo.Robots
 {
@@ -85,6 +86,9 @@ namespace cAlgo.Robots
         
         [Parameter("Early P %", Group = "Strategy", DefaultValue = 5, MinValue = 1, Step = 1)]
         public double TakeEarlyProfitAtAccountIncreasePercent { get; set; }
+        
+        [Parameter("Early C %", Group = "Strategy", DefaultValue = 25, MinValue = 0, Step = 25, MaxValue = 100)]
+        public double PercentToCaptureEarly { get; set; }
       
         // The hours of the day between which it can enter a trade.
         [Parameter("Start hour", Group = "Strategy", DefaultValue = 0, MinValue = 0, Step = 1)]
@@ -214,14 +218,19 @@ namespace cAlgo.Robots
         private void HandleEarlyProfit(Position position)
         {
             if (persistedPositionState.HasTakenEarlyProfit || 
+                PercentToCaptureEarly == 0.0 ||
                 position.NetProfit <= Account.Balance * (TakeEarlyProfitAtAccountIncreasePercent / 100.0))
             {
                 return;
             }
         
             // Reduce position volume and update stop loss price to entry price
-            position.ModifyVolume((position.VolumeInUnits / 4) * 3);
-            position.ModifyStopLossPrice(position.EntryPrice);
+            if(PercentToCaptureEarly == 100.0) {
+                position.Close();
+            } else {
+                position.ModifyVolume(position.VolumeInUnits * (1 - (PercentToCaptureEarly / 100.0)));
+                position.ModifyStopLossPrice(position.EntryPrice);
+            }
         
             // Update persisted position state
             persistedPositionState.HasTakenEarlyProfit = true;
