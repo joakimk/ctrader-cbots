@@ -4,3 +4,4 @@ import:
 	@cp ../cAlgo/TC-US100-LONG.cbotset TrendCapture/
 	@cp ../cAlgo/TC-US100-SHORT.cbotset TrendCapture/
 	@cp ../cAlgo/TC-US100-US-OPEN.cbotset TrendCapture/
+	@cp ../cAlgo/TC-US100-EU-OPEN.cbotset TrendCapture/

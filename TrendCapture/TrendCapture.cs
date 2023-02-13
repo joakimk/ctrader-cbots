@@ -68,6 +68,9 @@ namespace cAlgo.Robots
         
         [Parameter("Trade only US open?", Group = "Strategy", DefaultValue = false)]
         public bool OnlyTradeUsMarketOpen { get; set; }
+        
+        [Parameter("Trade only EU open?", Group = "Strategy", DefaultValue = false)]
+        public bool OnlyTradeEuMarketOpen { get; set; }
       
         [Parameter("Trend MA", Group = "Strategy", DefaultValue = 50, MinValue = 3, Step = 1)]
         public int TrendMA { get; set; }
@@ -245,7 +248,10 @@ namespace cAlgo.Robots
 
                 
         private bool IsOutsideTradingHours() {
-            if(OnlyTradeUsMarketOpen) {
+            if(OnlyTradeEuMarketOpen) {
+                return !EuMarketRecentlyOpened();
+            }
+            else if(OnlyTradeUsMarketOpen) {
                 return !UsMarketRecentlyOpened();
             } else {
                 return (Server.Time.Hour < StartHour || Server.Time.Hour > StopHour) ||
@@ -257,6 +263,10 @@ namespace cAlgo.Robots
         // often generates false signals since it's too volatile then.
         private bool UsMarketRecentlyOpened() {
             return Server.Time.Hour == 15 && Server.Time.Minute >= 30;
+        }
+        
+        private bool EuMarketRecentlyOpened() {
+            return Server.Time.Hour == 9;
         }
         
         private void EnterNewPosition() {
