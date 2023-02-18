@@ -247,6 +247,9 @@ namespace cAlgo.Robots
         
         private void HandleEarlyProfit(Position position)
         {
+            // Basing this on win relative to position produced slightly worse results.
+            // position.NetProfit <= ((position.Quantity * position.EntryPrice) * (TakeEarlyProfitAtAccountIncreasePercent / 100.0)))
+            
             if (persistedPositionState.HasTakenEarlyProfit || 
                 PercentToCaptureEarly == 0.0 ||
                 position.NetProfit <= Account.Balance * (TakeEarlyProfitAtAccountIncreasePercent / 100.0))
