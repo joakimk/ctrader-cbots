@@ -59,8 +59,14 @@ namespace cAlgo.Robots
         [Parameter("Risk %", Group = "Risk", DefaultValue = 3.5)]
         public double MaxRiskPerTradePercent { get; set; }
         
-        [Parameter("Max DL %", Group = "Risk", DefaultValue = 8)]
-        public double MaxDailyLossPercent { get; set; }
+        //[Parameter("Max DL %", Group = "Risk", DefaultValue = 8)]
+        //public double MaxDailyLossPercent { get; set; }
+        
+        [Parameter("Max consecutive trade failures", Group = "Risk", DefaultValue = 1, MinValue = 1)]
+        public int MaxConsecutiveFailures { get; set; }
+    
+        [Parameter("Hours to look back for failures", Group = "Risk", DefaultValue = 24, MinValue = 1)]
+        public int HoursToLookBackForFailures { get; set; }
         
         // Strategy ---------------------------------------------------------------------------
 
@@ -121,8 +127,6 @@ namespace cAlgo.Robots
         {
             trendMa = Indicators.MovingAverage(Source, TrendMA, MovingAverageType.Simple);
             
-            if(MaxDailyLossHasBeenReached()) { Print("Daily loss reached."); }
-            
             ReportToHealthchecksIfMarketIsClosed();
             
             var position = CurrentPosition();
@@ -169,6 +173,9 @@ namespace cAlgo.Robots
             
             if(ManageExistingPosition())         { return; }
             if(IsOutsideTradingHours())          { return; }
+            if(HasRecentlyLostTooManyTrades())   { return; }
+            
+            EnterNewPosition();   
             
             EnterNewPosition();
         }
@@ -285,6 +292,25 @@ namespace cAlgo.Robots
             }
         }
         
+        private bool HasRecentlyLostTooManyTrades()
+        {
+            if(History.Count == 0) { return false; }
+            
+            var lastTrade = History.Last();
+            if(lastTrade != null && lastTrade.GrossProfit > 0) { return false; }
+
+            var endTime = Bars.Last(1).OpenTime;
+            var startTime = endTime.AddHours(-HoursToLookBackForFailures);
+    
+            var trades = History.Where(x => x.EntryTime >= startTime && x.EntryTime <= endTime)
+                .OrderByDescending(p => p.EntryTime)
+                .ToList();
+    
+            if(trades.Count < MaxConsecutiveFailures) { return false; }
+    
+            return trades.Take(MaxConsecutiveFailures).All(p => p.GrossProfit < 0);
+        }
+   
         private void EnterBullMarket() {
             var maEntries = trendMa.Result.TakeLast(TrendLookbackDistance).ToArray();
             var bars = Bars.TakeLast(TrendLookbackDistance).ToArray();
@@ -438,10 +464,6 @@ namespace cAlgo.Robots
         // It can return null if the requested trade would use more of the available margin
         // than MaxMarginUsagePercent allows or max daily loss as been reached.
         private double? VolumeToTrade(double stopPips) {
-            if(MaxDailyLossHasBeenReached()) { Print("Daily loss reached."); return null; }
-
-            var dailyLossBalanceLeft = StartingBalanceToday() + ProfitToday();
-
             var maxRiskAmountPerTrade = Account.Balance * (MaxRiskPerTradePercent / 100.0);
 
             var stopLoss = Symbol.PipSize * stopPips;
@@ -463,25 +485,6 @@ namespace cAlgo.Robots
         private double MarginAvailable() {
             return Account.Balance - Account.Margin;
         }
-        
-        private bool MaxDailyLossHasBeenReached() { 
-            var allTradesToday = BotHistory().Where(ht => ht.ClosingTime.Date == Server.Time.Date);
-            var profitToday = allTradesToday.Sum(trade => trade.NetProfit);
-            var startingBalance = Account.Balance - profitToday;
-            var maxRiskAmountPerDay = StartingBalanceToday() * (MaxDailyLossPercent / 100.0);
-            Print($"MaxDL? Profit {Math.Round(ProfitToday())} < maxRiskAmountPerDay {-Math.Round(maxRiskAmountPerDay)}: {ProfitToday() < -maxRiskAmountPerDay}");
-            return ProfitToday() < -maxRiskAmountPerDay;
-       }
-       
-       private double StartingBalanceToday() {
-            return Account.Balance - ProfitToday();
-       }
-       
-       private double ProfitToday() {
-            var allTradesToday = BotHistory().Where(ht => ht.EntryTime.Date == Server.Time.Date).ToArray();
-            var profitToday = allTradesToday.Sum(trade => trade.NetProfit);
-            return profitToday;
-       }
        
        private IEnumerable<HistoricalTrade> BotHistory() {
             return History.Where(trade => trade.Label == BotIdentifier);
