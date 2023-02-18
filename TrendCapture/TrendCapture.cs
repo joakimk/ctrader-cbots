@@ -187,6 +187,8 @@ namespace cAlgo.Robots
             if(ManageExistingPosition())         { return; }
             if(IsOutsideTradingHours())          { return; }
             
+            EnterNewPosition();
+            
             lastRunOnMinute = lastBarMinute;
         }
 
