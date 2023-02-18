@@ -112,22 +112,25 @@ namespace cAlgo.Robots
         
         private int lastRunOnMinute = -1;
         private PersistedPositionState persistedPositionState;
-       
+        private MaxEquityPersistence maxEquityPersistence;
+
         protected override void OnStart()
         {
             trendMa = Indicators.MovingAverage(Source, TrendMA, MovingAverageType.Simple);
-            
-            if(MaxDailyLossHasBeenReached()) { Print("Daily loss reached."); }
-            
-            ReportToHealthchecksIfMarketIsClosed();
+        
+            maxEquityPersistence = MaxEquityPersistence.Load(BotIdentifier, IsBacktesting);
             
             var position = CurrentPosition();
             if(position != null) {
                 persistedPositionState = PersistedPositionState.Load(position, IsBacktesting);
             }
-
+                  
             Positions.Opened += OnPositionOpened;
             Positions.Closed += OnPositionClosed;
+            
+            CheckForEquityReversal();
+            
+            ReportToHealthchecksIfMarketIsClosed();
         }
         
         private void OnPositionOpened(PositionOpenedEventArgs args)
@@ -163,9 +166,10 @@ namespace cAlgo.Robots
             
             ReportToHealthchecks();
             
+            if(CheckForEquityReversal())         { return; }
             if(ManageExistingPosition())         { return; }
             if(IsOutsideTradingHours())          { return; }
-            
+
             EnterNewPosition();
         }
 
@@ -184,6 +188,8 @@ namespace cAlgo.Robots
         
             HandleMovingStop(position);
             HandleEarlyProfit(position);
+            
+            //if(MaxDailyLossHasBeenReached()) { position.Close(); }
         
             return true;
         }
@@ -215,6 +221,8 @@ namespace cAlgo.Robots
                 position.Close();
                 Stop();
             }
+            
+            //position.ModifyVolume(position.VolumeInUnits * 2);
         
             // Modify stop loss price to entry price
             position.ModifyStopLossPrice(position.EntryPrice);
@@ -267,6 +275,39 @@ namespace cAlgo.Robots
         
         private bool EuMarketRecentlyOpened() {
             return Server.Time.Hour == 9;
+        }
+        
+        private bool CheckForEquityReversal()
+        {
+            if (Account.Equity > maxEquityPersistence.MaxEquity)
+            {
+                maxEquityPersistence.MaxEquity = Account.Equity;
+                maxEquityPersistence.Save();
+            }
+            
+            if(HasEquityHitMaxReversalToday()) { return true; }
+            
+            double reversalThreshold = maxEquityPersistence.MaxEquity * (1 - MaxDailyLossPercent / 100.0);
+            if (Account.Equity < reversalThreshold)
+            {
+                maxEquityPersistence.LastHitReversalAt = Server.Time;
+                maxEquityPersistence.MaxEquity = Account.Equity;
+                
+                Print("Max equity reversal reached. Closing any open positions and waiting until tomorrow to continue.");
+    
+                var position = CurrentPosition();
+                if(position != null) { position.Close(); }
+    
+                maxEquityPersistence.Save();
+                return true;
+            }
+            
+            return false;
+        }
+        
+        private bool HasEquityHitMaxReversalToday()
+        {
+            return maxEquityPersistence.LastHitReversalAt.Date == Server.Time.Date;
         }
         
         private void EnterNewPosition() {
@@ -434,10 +475,6 @@ namespace cAlgo.Robots
         // It can return null if the requested trade would use more of the available margin
         // than MaxMarginUsagePercent allows or max daily loss as been reached.
         private double? VolumeToTrade(double stopPips) {
-            if(MaxDailyLossHasBeenReached()) { Print("Daily loss reached."); return null; }
-
-            var dailyLossBalanceLeft = StartingBalanceToday() + ProfitToday();
-
             var maxRiskAmountPerTrade = Account.Balance * (MaxRiskPerTradePercent / 100.0);
 
             var stopLoss = Symbol.PipSize * stopPips;
@@ -459,29 +496,6 @@ namespace cAlgo.Robots
         private double MarginAvailable() {
             return Account.Balance - Account.Margin;
         }
-        
-        private bool MaxDailyLossHasBeenReached() { 
-            var allTradesToday = BotHistory().Where(ht => ht.ClosingTime.Date == Server.Time.Date);
-            var profitToday = allTradesToday.Sum(trade => trade.NetProfit);
-            var startingBalance = Account.Balance - profitToday;
-            var maxRiskAmountPerDay = StartingBalanceToday() * (MaxDailyLossPercent / 100.0);
-            Print($"MaxDL? Profit {Math.Round(ProfitToday())} < maxRiskAmountPerDay {-Math.Round(maxRiskAmountPerDay)}: {ProfitToday() < -maxRiskAmountPerDay}");
-            return ProfitToday() < -maxRiskAmountPerDay;
-       }
-       
-       private double StartingBalanceToday() {
-            return Account.Balance - ProfitToday();
-       }
-       
-       private double ProfitToday() {
-            var allTradesToday = BotHistory().Where(ht => ht.EntryTime.Date == Server.Time.Date).ToArray();
-            var profitToday = allTradesToday.Sum(trade => trade.NetProfit);
-            return profitToday;
-       }
-       
-       private IEnumerable<HistoricalTrade> BotHistory() {
-            return History.Where(trade => trade.Label == BotIdentifier);
-       }
        
        private void ReportToHealthchecksIfMarketIsClosed() {
             var timer = new System.Timers.Timer(60 * 1000);
@@ -516,6 +530,50 @@ namespace cAlgo.Robots
        }
     }
 }
+
+[Serializable]
+public class MaxEquityPersistence
+{
+    public double MaxEquity { get; set; }
+    public DateTime LastHitReversalAt { get; set; }
+
+    public bool IsBacktesting { get; set; }
+    public string FilePath { get; set; }
+
+    public MaxEquityPersistence() {}
+
+    private MaxEquityPersistence(double maxEquity, DateTime lastHitReversalAt, string filepath, bool isBacktesting)
+    {
+        MaxEquity = maxEquity;
+        LastHitReversalAt = lastHitReversalAt;
+        FilePath = filepath;
+        IsBacktesting = isBacktesting;
+    }
+
+    public void Save()
+    {
+        if(IsBacktesting) { return; }
+
+        string json = JsonSerializer.Serialize(this);
+        File.WriteAllText(FilePath, json);
+    }
+
+    public static MaxEquityPersistence Load(string botIdentifier, bool isBacktesting)
+    {
+        if(isBacktesting) { return new MaxEquityPersistence(0, default, "", true); }
+
+        string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+        string filePath = Path.Combine(desktopPath, $"{botIdentifier}-MaxEquity.json");
+        if (!File.Exists(filePath))
+        {
+            return new MaxEquityPersistence(0, default, filePath, false);
+        }
+
+        string json = File.ReadAllText(filePath);
+        return JsonSerializer.Deserialize<MaxEquityPersistence>(json);
+    }
+}
+
 
 [Serializable]
 public class PersistedPositionState
