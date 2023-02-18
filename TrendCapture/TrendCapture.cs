@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Net.Http;
 using System.Net;
 using System.Timers;
 using System.IO;
@@ -49,6 +50,9 @@ namespace cAlgo.Robots
         
         [Parameter("Healthchecks URL")]
         public string HealthchecksUrl { get; set; }
+        
+        [Parameter("Honeybadger API Key", DefaultValue = "")]
+        public string HoneybadgerApiKey { get; set; }
         
         // Risk -------------------------------------------------------------------------------
         
@@ -514,6 +518,35 @@ namespace cAlgo.Robots
                 }
             } catch (Exception ex) {}
        }
+       
+       private async void ReportErrorToHoneybadger(Exception ex)
+       {
+            if (string.IsNullOrEmpty(HoneybadgerApiKey))
+            {
+                Print("Honeybadger API key not set.");
+                return;
+            }
+            
+            // This crashes here somewhere, I have not had time to debug yet.
+            
+            string url = "https://api.honeybadger.io/v1/notices/";
+            string json = $"{{\"error\": {{\"class\":\"{ex.GetType().Name}\",\"message\":\"{ex.Message}\",\"backtrace\":\"{ex.StackTrace}\"}}}}";
+
+            HttpClient client = new HttpClient();
+            client.DefaultRequestHeaders.Add("X-API-Key", HoneybadgerApiKey);
+
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            HttpResponseMessage response = await client.PostAsync(url, content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Print("Error reported to Honeybadger.");
+            }
+            else
+            {
+                Print("Error reporting to Honeybadger: " + response.StatusCode);
+            }
+        }
     }
 }
 
