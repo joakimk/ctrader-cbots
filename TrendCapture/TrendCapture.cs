@@ -462,8 +462,6 @@ namespace cAlgo.Robots
         private double? VolumeToTrade(double stopPips) {
             if(MaxDailyLossHasBeenReached()) { Print("Daily loss reached."); return null; }
 
-            var dailyLossBalanceLeft = StartingBalanceToday() + ProfitToday();
-
             var maxRiskAmountPerTrade = Account.Balance * (MaxRiskPerTradePercent / 100.0);
 
             var stopLoss = Symbol.PipSize * stopPips;
