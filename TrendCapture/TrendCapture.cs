@@ -485,7 +485,9 @@ namespace cAlgo.Robots
         }
         
         private bool MaxDailyLossHasBeenReached() { 
-            var allTradesToday = BotHistory().Where(ht => ht.ClosingTime.Date == Server.Time.Date);
+            // This explicitly uses History without filtering on this bot instance
+            // to keep losses in check when running multiple bots.
+            var allTradesToday = History.Where(ht => ht.ClosingTime.Date == Server.Time.Date);
             var profitToday = allTradesToday.Sum(trade => trade.NetProfit);
             var startingBalance = Account.Balance - profitToday;
             var maxRiskAmountPerDay = StartingBalanceToday() * (MaxDailyLossPercent / 100.0);
@@ -498,13 +500,9 @@ namespace cAlgo.Robots
        }
        
        private double ProfitToday() {
-            var allTradesToday = BotHistory().Where(ht => ht.EntryTime.Date == Server.Time.Date).ToArray();
+            var allTradesToday = History.Where(ht => ht.EntryTime.Date == Server.Time.Date).ToArray();
             var profitToday = allTradesToday.Sum(trade => trade.NetProfit);
             return profitToday;
-       }
-       
-       private IEnumerable<HistoricalTrade> BotHistory() {
-            return History.Where(trade => trade.Label == BotIdentifier);
        }
        
        private void ReportToHealthchecksIfMarketIsClosed() {
