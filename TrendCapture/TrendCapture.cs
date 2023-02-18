@@ -154,15 +154,32 @@ namespace cAlgo.Robots
         // Backup code
         // robocopy C:\Users\jocke\Documents\cAlgo Z:\shared_to_vm\Documents\cAlgo /MIR
         
+        // About once a day one of the instances crashes for some reason. Until
+        // there is good exception reporting, retries can help. Later they can
+        // also help for stability.
+        private int retriesCount = 0;
         protected override void OnTick()
+        {
+            try {
+                OnTickWithoutRetries();
+                retriesCount = 0;
+            } catch(Exception ex) {
+                ReportErrorToHoneybadger(ex);
+                
+                retriesCount += 1;
+                if(retriesCount > 3) {
+                    throw ex;
+                }
+            }
+        }
+        
+        private void OnTickWithoutRetries()
         {
             // Only run at certain intervals so that backtests can use realistic tick data
             // that works exactly like live without being super slow.
             var lastBarMinute = Bars.Last(1).OpenTime.Minute;
             if(lastRunOnMinute == lastBarMinute) {
                 return;
-            } else {
-                lastRunOnMinute = lastBarMinute;
             }
             
             ReportToHealthchecks();
@@ -170,7 +187,7 @@ namespace cAlgo.Robots
             if(ManageExistingPosition())         { return; }
             if(IsOutsideTradingHours())          { return; }
             
-            EnterNewPosition();
+            lastRunOnMinute = lastBarMinute;
         }
 
         protected override void OnStop()
