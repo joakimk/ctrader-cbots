@@ -79,7 +79,7 @@ namespace cAlgo.Robots
         [Parameter("Trend MA", Group = "Strategy", DefaultValue = 50, MinValue = 3, Step = 1)]
         public int TrendMA { get; set; }
         
-        [Parameter("TS Scale", Group = "Strategy", DefaultValue = 4, MinValue = 2, Step = 0.1)]
+        [Parameter("TS Scale", Group = "Strategy", DefaultValue = 4, MinValue = 1, Step = 0.1)]
         public double TrailingStopScale { get; set; }
         
         [Parameter("Stop Scale", Group = "Strategy", DefaultValue = 1.5, MinValue = 0.5, Step = 0.1)]
@@ -466,7 +466,18 @@ namespace cAlgo.Robots
 
             var stopLoss = Symbol.PipSize * stopPips;
             var riskAmount = Account.Balance * MaxRiskPerTradePercent / 100;
-            var volume = (maxRiskAmountPerTrade / stopLoss) / Symbols.GetSymbol("USDSEK").Ask;
+            var volumeInSymbolCurrency = (maxRiskAmountPerTrade / stopLoss);
+            
+            double volume = 0;
+            
+            if(Symbol.QuoteAsset.Name == "SEK") {
+                volume = Math.Floor(volumeInSymbolCurrency);
+            } else if(Symbol.QuoteAsset.Name == "USD") {
+                volume = volumeInSymbolCurrency / Symbols.GetSymbol("USDSEK").Ask;
+            } else {
+                Print($"I don't know how to trade in currency: {Symbol.QuoteAsset.Name}");
+                Stop();
+            }
               
             if(MarginAvailable() > riskAmount) {
                 if(volume < Symbol.VolumeInUnitsMin) {
