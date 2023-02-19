@@ -196,17 +196,42 @@ namespace cAlgo.Robots
         {
         }
         
+        //private bool hasModifiedVolume = false;
         private bool ManageExistingPosition()
         {
             var position = CurrentPosition();
         
             if (position == null)
             {
+                //hasModifiedVolume = false;
                 return false;
             }
         
             HandleMovingStop(position);
             HandleEarlyProfit(position);
+            
+            /* Wip
+            // Trying to increase volume on big winners, but it's a ticky thing because it also
+            // means they become bigger loosers if it changes direction.
+            //persistedPositionState.HasChangedToMovingStop 
+            // || (position.TradeType == TradeType.Buy && Bars.Last(1).Close < trendMa.Result.Last(1)) ||
+                   // (position.TradeType == TradeType.Sell && Bars.Last(1).Close > trendMa.Result.Last(1))
+                    
+            if(!hasModifiedVolume) {
+                if(true) {                   
+                    var marginPerUnit = Symbol.GetEstimatedMargin(position.TradeType, Symbol.VolumeInUnitsMin);
+                    var addUnits = Math.Floor(Account.FreeMargin / marginPerUnit);
+                    //Print(MarginAvailable());
+                    Print(addUnits);
+                    Print(Account.FreeMargin);
+                    if(addUnits > 0) {
+                        position.ModifyVolume(position.VolumeInUnits + Symbol.VolumeInUnitsMin * addUnits);
+                        Print($"Modify by {addUnits * Symbol.VolumeInUnitsMin}");
+                        hasModifiedVolume = true;
+                    }
+                }
+              
+            }*/
         
             return true;
         }
