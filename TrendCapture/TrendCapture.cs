@@ -187,6 +187,11 @@ namespace cAlgo.Robots
             if(ManageExistingPosition())         { return; }
             if(IsOutsideTradingHours())          { return; }
             
+            // WIP: Looking into only trading when volume is high.
+            //var lastDay = MarketData.GetBars(TimeFrame.Daily).Last(1);
+            //var averageVolumePer15Min = lastDay.TickVolume / 24 / 4;
+            //if(MarketData.GetBars(TimeFrame.Minute15).Last(1).TickVolume < averageVolumePer15Min * RequireAverageVolumeRatio) { return; }
+            
             EnterNewPosition();
             
             lastRunOnMinute = lastBarMinute;
