@@ -62,6 +62,9 @@ namespace cAlgo.Robots
         [Parameter("Max DL %", Group = "Risk", DefaultValue = 8)]
         public double MaxDailyLossPercent { get; set; }
         
+        [Parameter("Max usable balance (default = all)", Group = "Risk", DefaultValue = -1)]
+        public double MaxUsableBalance { get; set; }
+        
         // Strategy ---------------------------------------------------------------------------
 
         [Parameter("Trade upswings?", Group = "Strategy", DefaultValue = true)]
@@ -254,7 +257,7 @@ namespace cAlgo.Robots
             
             if (persistedPositionState.HasTakenEarlyProfit || 
                 PercentToCaptureEarly == 0.0 ||
-                position.NetProfit <= Account.Balance * (TakeEarlyProfitAtAccountIncreasePercent / 100.0))
+                position.NetProfit <= UsableBalance() * (TakeEarlyProfitAtAccountIncreasePercent / 100.0))
             {
                 return;
             }
@@ -462,10 +465,10 @@ namespace cAlgo.Robots
         private double? VolumeToTrade(double stopPips) {
             if(MaxDailyLossHasBeenReached()) { Print("Daily loss reached."); return null; }
 
-            var maxRiskAmountPerTrade = Account.Balance * (MaxRiskPerTradePercent / 100.0);
+            var maxRiskAmountPerTrade = UsableBalance() * (MaxRiskPerTradePercent / 100.0);
 
             var stopLoss = Symbol.PipSize * stopPips;
-            var riskAmount = Account.Balance * MaxRiskPerTradePercent / 100;
+            var riskAmount = UsableBalance() * MaxRiskPerTradePercent / 100;
             var volumeInSymbolCurrency = (maxRiskAmountPerTrade / stopLoss);
             
             double volume = 0;
@@ -492,7 +495,7 @@ namespace cAlgo.Robots
         }
         
         private double MarginAvailable() {
-            return Account.Balance - Account.Margin;
+            return UsableBalance() - Account.Margin;
         }
         
         private bool MaxDailyLossHasBeenReached() { 
@@ -500,14 +503,22 @@ namespace cAlgo.Robots
             // to keep losses in check when running multiple bots.
             var allTradesToday = History.Where(ht => ht.ClosingTime.Date == Server.Time.Date);
             var profitToday = allTradesToday.Sum(trade => trade.NetProfit);
-            var startingBalance = Account.Balance - profitToday;
+            var startingBalance = UsableBalance() - profitToday;
             var maxRiskAmountPerDay = StartingBalanceToday() * (MaxDailyLossPercent / 100.0);
             Print($"MaxDL? Profit {Math.Round(ProfitToday())} < maxRiskAmountPerDay {-Math.Round(maxRiskAmountPerDay)}: {ProfitToday() < -maxRiskAmountPerDay}");
             return ProfitToday() < -maxRiskAmountPerDay;
        }
        
        private double StartingBalanceToday() {
-            return Account.Balance - ProfitToday();
+            return UsableBalance() - ProfitToday();
+       }
+       
+       private double UsableBalance() {
+            if(MaxUsableBalance == -1) {
+                return Account.Balance;
+            } else {
+                return Math.Min(Account.Balance, MaxUsableBalance);
+            }
        }
        
        private double ProfitToday() {
