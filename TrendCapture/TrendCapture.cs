@@ -311,6 +311,9 @@ namespace cAlgo.Robots
         }
         
         private void EnterBullMarket() {
+            //var dailyBars = MarketData.GetBars(TimeFrame.Daily);
+            //if(dailyBars[0].Open < dailyBars[1].Close) { return; }
+        
             var maEntries = trendMa.Result.TakeLast(TrendLookbackDistance).ToArray();
             var bars = Bars.TakeLast(TrendLookbackDistance).ToArray();
             var barsAboveMa = 0;
@@ -353,6 +356,9 @@ namespace cAlgo.Robots
         }
         
         private void EnterBearMarket() {
+            //var dailyBars = MarketData.GetBars(TimeFrame.Daily);
+            //if(dailyBars[0].Open > dailyBars[1].Close) { return; }
+            
             var maEntries = trendMa.Result.TakeLast(TrendLookbackDistance).ToArray();
             var bars = Bars.TakeLast(TrendLookbackDistance).ToArray();
             var barsBelowMa = 0;
