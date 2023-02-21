@@ -122,6 +122,10 @@ namespace cAlgo.Robots
        
         protected override void OnStart()
         {
+            AppDomain.CurrentDomain.UnhandledException += (sender, e) => {
+               WriteToLog(new System.Diagnostics.StackTrace(e.ExceptionObject as Exception).ToString());
+            };
+        
             trendMa = Indicators.MovingAverage(Source, TrendMA, MovingAverageType.Simple);
             
             if(MaxDailyLossHasBeenReached()) { Print("Daily loss reached."); }
@@ -167,6 +171,8 @@ namespace cAlgo.Robots
                 OnTickWithoutRetries();
                 retriesCount = 0;
             } catch(Exception ex) {
+                WriteToLog(new System.Diagnostics.StackTrace(ex).ToString());
+
                 ReportErrorToHoneybadger(ex);
                 
                 retriesCount += 1;
@@ -573,24 +579,64 @@ namespace cAlgo.Robots
                 return;
             }
             
-            // This crashes here somewhere, I have not had time to debug yet.
-            
-            string url = "https://api.honeybadger.io/v1/notices/";
-            string json = $"{{\"error\": {{\"class\":\"{ex.GetType().Name}\",\"message\":\"{ex.Message}\",\"backtrace\":\"{ex.StackTrace}\"}}}}";
-
-            HttpClient client = new HttpClient();
-            client.DefaultRequestHeaders.Add("X-API-Key", HoneybadgerApiKey);
-
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-            HttpResponseMessage response = await client.PostAsync(url, content);
-
-            if (response.IsSuccessStatusCode)
+            // This still does not work.
+            //return;
+            try
             {
-                Print("Error reported to Honeybadger.");
+                string url = "https://api.honeybadger.io/v1/notices";
+                string payload = "{\n" +
+                    "  \"notifier\": {\n" +
+                    "    \"name\": \"cTrader Notifier\",\n" +
+                    "    \"url\": \"https://www.example.com\",\n" +
+                    "    \"version\": \"1.0\"\n" +
+                    "  },\n" +
+                    "  \"error\": {\n" +
+                    "    \"class\": \"" + ex.GetType().Name + "\",\n" +
+                    "    \"message\": \"" + ex.Message.Replace("\"", "\\\"") + "\",\n" +
+                    "    \"backtrace\": \"" + ex.StackTrace.Replace("\"", "\\\"") + "\"\n" +
+                    "  },\n" +
+                    "  \"server\": {\n" +
+                    "    \"project_root\": \"" + AppDomain.CurrentDomain.BaseDirectory.Replace("\\", "/") + "\",\n" +
+                    "    \"environment_name\": \"" + Environment.MachineName + "\",\n" +
+                    "    \"hostname\": \"" + Environment.MachineName + "\",\n" +
+                    "    \"revision\": \"\",\n" +
+                    "    \"pid\": " + System.Diagnostics.Process.GetCurrentProcess().Id + "\n" +
+                    "  }\n" +
+                    "}";
+                WriteToLog(payload);
+                return; // wip
+                WebClient client = new WebClient();
+                client.Headers.Add("X-API-Key", HoneybadgerApiKey);
+                client.Headers.Add(HttpRequestHeader.ContentType, "application/json");
+                client.Headers.Add(HttpRequestHeader.Accept, "application/json");
+                client.Headers.Add(HttpRequestHeader.UserAgent, "cTrader Notifier 1.0; .NET " + Environment.Version.ToString() + "; " + Environment.OSVersion.ToString());
+        
+                string response = client.UploadString(url, "POST", payload);
+        
+                Print("Error reported to Honeybadger: " + response);
             }
-            else
+            catch (Exception e)
             {
-                Print("Error reporting to Honeybadger: " + response.StatusCode);
+                Print("Error reporting to Honeybadger: " + e.Message);
+            }
+        }
+        
+        private void WriteToLog(string message)
+        {
+            Print(message);
+            
+            // Specify the path of the log file on the user's desktop
+            string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+            string logFilePath = Path.Combine(desktopPath, $"{BotIdentifier}-Logs.txt");
+
+            // Create or append to the log file
+            using (StreamWriter writer = File.AppendText(logFilePath))
+            {
+                // Write the current date and time and the message to the log file
+                writer.WriteLine($"[{DateTime.Now.ToString()}] {message}");
+
+                // Close the writer to free resources
+                writer.Close();
             }
         }
     }
