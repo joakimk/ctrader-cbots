@@ -119,7 +119,32 @@ namespace cAlgo.Robots
         
         private int lastRunOnMinute = -1;
         private PersistedPositionState persistedPositionState;
-       
+        
+        protected override double GetFitness(GetFitnessArgs args)
+        {
+            double fitness = 0;
+            double netProfit = args.NetProfit;
+            double maxDrawdownPercentage = args.MaxBalanceDrawdownPercentages;
+            double winRate = (double)args.WinningTrades / args.TotalTrades;
+            double profitFactor = args.ProfitFactor;
+            double sharpeRatio = args.SharpeRatio;
+        
+            // Maximize net profit
+            fitness += netProfit;
+        
+            // Reward high win rate and profit factor
+            fitness += winRate * 500.0;
+            fitness += profitFactor * 500.0;
+        
+            // Penalize for high drawdown
+            fitness -= maxDrawdownPercentage * 10.0;
+        
+            // Reward good risk-adjusted return
+            fitness += Math.Pow(sharpeRatio, 2) * 1000.0;
+        
+            return fitness;
+        }
+
         protected override void OnStart()
         {
             AppDomain.CurrentDomain.UnhandledException += (sender, e) => {
