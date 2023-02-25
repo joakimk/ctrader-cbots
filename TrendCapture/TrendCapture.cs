@@ -62,8 +62,8 @@ namespace cAlgo.Robots
         [Parameter("Max DL %", Group = "Risk", DefaultValue = 8)]
         public double MaxDailyLossPercent { get; set; }
         
-        [Parameter("Max usable balance (default = all)", Group = "Risk", DefaultValue = -1)]
-        public double MaxUsableBalance { get; set; }
+        [Parameter("Max usable balance percent", Group = "Risk", DefaultValue = 100)]
+        public int MaxUsableBalancePercent { get; set; }
         
         // Strategy ---------------------------------------------------------------------------
 
@@ -555,11 +555,7 @@ namespace cAlgo.Robots
        }
        
        private double UsableBalance() {
-            if(MaxUsableBalance == -1) {
-                return Account.Balance;
-            } else {
-                return Math.Min(Account.Balance, MaxUsableBalance);
-            }
+            return Account.Balance * (MaxUsableBalancePercent / 100.0);
        }
        
        private double ProfitToday() {
