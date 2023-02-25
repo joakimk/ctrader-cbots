@@ -518,6 +518,10 @@ namespace cAlgo.Robots
                 Print($"I don't know how to trade in currency: {Symbol.QuoteAsset.Name}");
                 Stop();
             }
+            
+            var marginPerVolumeUnit = Symbol.GetEstimatedMargin(TradeType.Buy, Symbol.VolumeInUnitsMin);
+            var maxVolume = Math.Floor(MarginAvailable() / marginPerVolumeUnit); 
+            volume = Math.Min(volume, maxVolume);
               
             if(MarginAvailable() > riskAmount) {
                 if(volume < Symbol.VolumeInUnitsMin) {
