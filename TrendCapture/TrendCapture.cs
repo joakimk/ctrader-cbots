@@ -82,7 +82,7 @@ namespace cAlgo.Robots
         [Parameter("Trend MA", Group = "Strategy", DefaultValue = 50, MinValue = 3, Step = 1)]
         public int TrendMA { get; set; }
         
-        [Parameter("TS Scale", Group = "Strategy", DefaultValue = 4, MinValue = 1, Step = 0.1)]
+        [Parameter("TS Scale", Group = "Strategy", DefaultValue = 4, MinValue = 0.5, Step = 0.1)]
         public double TrailingStopScale { get; set; }
         
         [Parameter("Stop Scale", Group = "Strategy", DefaultValue = 1.5, MinValue = 0.5, Step = 0.1)]
