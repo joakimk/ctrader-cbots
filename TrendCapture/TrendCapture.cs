@@ -520,7 +520,7 @@ namespace cAlgo.Robots
             }
             
             var marginPerVolumeUnit = Symbol.GetEstimatedMargin(TradeType.Buy, Symbol.VolumeInUnitsMin);
-            var maxVolume = Math.Floor(MarginAvailable() / marginPerVolumeUnit); 
+            var maxVolume = Math.Floor(MarginAvailable() / marginPerVolumeUnit) * Symbol.VolumeInUnitsMin;
             volume = Math.Min(volume, maxVolume);
               
             if(MarginAvailable() > riskAmount) {
