@@ -1,0 +1,143 @@
+﻿{
+  "Parameters": [
+    {
+      "Name": "c02b25309272471b89a4de3831c473c5",
+      "Value": "m1",
+      "ParameterType": "TimeFrame",
+      "Optimize": false,
+      "Values": [
+        "m1",
+        "m2",
+        "m3",
+        "m4",
+        "m5",
+        "m6",
+        "m7",
+        "m8",
+        "m9",
+        "m10",
+        "m15",
+        "m20",
+        "m30",
+        "m45",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h6",
+        "h8",
+        "h12",
+        "D1",
+        "D2",
+        "D3",
+        "W1",
+        "Month1"
+      ]
+    },
+    {
+      "Name": "BotIdentifier",
+      "Value": "V3-RT",
+      "ParameterType": "String",
+      "Optimize": false
+    },
+    {
+      "Name": "MaxRiskPerTradePercent",
+      "Value": "2",
+      "ParameterType": "Double",
+      "Optimize": false,
+      "Min": "0.5",
+      "Max": "1.5",
+      "Step": "0.1"
+    },
+    {
+      "Name": "RiskIncreasePercent",
+      "Value": "0",
+      "ParameterType": "Double",
+      "Optimize": false,
+      "Min": "0",
+      "Max": "100",
+      "Step": "1"
+    },
+    {
+      "Name": "MaxRiskAfterIncreases",
+      "Value": "2",
+      "ParameterType": "Double",
+      "Optimize": false,
+      "Min": "1",
+      "Max": "100",
+      "Step": "1"
+    },
+    {
+      "Name": "MaxDailyLossPercent",
+      "Value": "2",
+      "ParameterType": "Double",
+      "Optimize": false,
+      "Min": "1.5",
+      "Max": "2.5",
+      "Step": "0.1"
+    },
+    {
+      "Name": "MaxUsableBalancePercent",
+      "Value": "100",
+      "ParameterType": "Double",
+      "Optimize": false,
+      "Min": "99.5",
+      "Max": "100.5",
+      "Step": "0.1"
+    },
+    {
+      "Name": "StopLossToTakeProfitRatio",
+      "Value": "0.5",
+      "ParameterType": "Double",
+      "Optimize": true,
+      "Min": "1",
+      "Max": "8",
+      "Step": "1"
+    },
+    {
+      "Name": "NumberOfBars",
+      "Value": "0",
+      "ParameterType": "Integer",
+      "Optimize": true,
+      "Min": "30",
+      "Max": "80",
+      "Step": "20"
+    },
+    {
+      "Name": "MinDistanceBetweenHighLow",
+      "Value": "0",
+      "ParameterType": "Double",
+      "Optimize": true,
+      "Min": "50",
+      "Max": "150",
+      "Step": "30"
+    },
+    {
+      "Name": "MaxDistanceBetweenHighLow",
+      "Value": "400",
+      "ParameterType": "Double",
+      "Optimize": true,
+      "Min": "75",
+      "Max": "400",
+      "Step": "40"
+    },
+    {
+      "Name": "SMAPeriod",
+      "Value": "9",
+      "ParameterType": "Integer",
+      "Optimize": true,
+      "Min": "5",
+      "Max": "15",
+      "Step": "4"
+    },
+    {
+      "Name": "PriceOffsetPercent",
+      "Value": "0",
+      "ParameterType": "Double",
+      "Optimize": false,
+      "Min": "1",
+      "Max": "20",
+      "Step": "2"
+    }
+  ]
+}
