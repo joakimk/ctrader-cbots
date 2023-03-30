@@ -5,7 +5,14 @@ using cAlgo.API;
 using cAlgo.API.Internals;
 using cAlgo.API.Indicators;
 
-// Trading bot mostly coded by Chat GPT (except for the generic code).
+// Trading bot mostly written by Chat GPT.
+
+// Usually set this for optimization:
+// - 1m data, 0 fees, copy live spread
+// - optimization critera = maximize netprofit, minimize balance drawdown %.
+//
+// Optimize 1 month, verify 3 or more weeks in backtests after that period.
+// Optimization takes about 2-3 hours on 12 cores.
 
 namespace cAlgo
 {
