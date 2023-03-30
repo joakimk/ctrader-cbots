@@ -7,8 +7,6 @@ using cAlgo.API.Indicators;
 
 // Trading bot mostly coded by Chat GPT (except for the generic code).
 
-// This is work in progress.
-
 namespace cAlgo
 {
     [Robot(TimeZone = TimeZones.EasternStandardTime, AccessRights = AccessRights.None)]
@@ -19,13 +17,7 @@ namespace cAlgo
 
         [Parameter("Max Risk Per Trade Percent", DefaultValue = 1.0)]
         public double MaxRiskPerTradePercent { get; set; }
-        
-        [Parameter("Risk Increase On Successful Trade Percent", DefaultValue = 1, MinValue = 0, MaxValue = 100, Step = 0.5)]
-        public double RiskIncreasePercent { get; set; }
-        
-        [Parameter("Max Risk After Increases", DefaultValue = 3, MinValue = 1, MaxValue = 100, Step = 0.5)]
-        public double MaxRiskAfterIncreases { get; set; }
-                
+
         [Parameter("Max Daily Loss Percent", DefaultValue = 2.0)]
         public double MaxDailyLossPercent { get; set; }
         
@@ -205,10 +197,9 @@ namespace cAlgo
         {
             if (MaxDailyLossHasBeenReached()) { Print("[VolumeToTrade] Daily loss reached."); return null; }
         
-            double adjustedRisk = CalculateAdjustedRisk();
-            var maxRiskAmountPerTrade = UsableBalance() * (adjustedRisk / 100.0);
+            var maxRiskAmountPerTrade = UsableBalance() * (MaxRiskPerTradePercent / 100.0);
             var stopLoss = Symbol.PipSize * stopPips;
-            var riskAmount = UsableBalance() * adjustedRisk / 100;
+            var riskAmount = UsableBalance() * MaxRiskPerTradePercent / 100;
             var volumeInSymbolCurrency = (maxRiskAmountPerTrade / stopLoss);
         
             double volume = Symbol.QuoteAsset.Name switch
@@ -236,30 +227,6 @@ namespace cAlgo
                 Print("[VolumeToTrade] There is not enough margin available in the account to make the planned trade. Skipping.");
                 return null;
             }
-        }
-        
-        private double CalculateAdjustedRisk()
-        {
-            int consecutiveWins = 0;
-            double defaultRisk = MaxRiskPerTradePercent;
-        
-            var tradeHistory = History.OrderByDescending(t => t.ClosingTime).TakeWhile(t => t.TradeType == t.TradeType && t.NetProfit > 0);
-        
-            foreach (var trade in tradeHistory)
-            {
-                if (trade.NetProfit > 0)
-                {
-                    consecutiveWins++;
-                }
-                else
-                {
-                    break;
-                }
-            }
-        
-            double adjustedRisk = defaultRisk + (defaultRisk * (RiskIncreasePercent / 100) * consecutiveWins);
-        
-            return Math.Min(adjustedRisk, MaxRiskAfterIncreases); // Cap the risk at the specified maximum
         }
     }
 }
