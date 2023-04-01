@@ -44,7 +44,7 @@ namespace cAlgo
         [Parameter("Initial stop pips", DefaultValue = 500, MinValue = 100, MaxValue = 2000, Step = 100)]
         public double InitialStopPips { get; set; }
         
-        [Parameter("Add ratio", DefaultValue = 2, MinValue = 0.5, MaxValue = 20, Step = 0.5)]
+        [Parameter("Add ratio", DefaultValue = 2, MinValue = 0.25, MaxValue = 20, Step = 0.25)]
         public double AddRatio { get; set; }
         
         [Parameter("Moving Average", DefaultValue = 20, MinValue = 5, MaxValue = 200, Step = 10)]
