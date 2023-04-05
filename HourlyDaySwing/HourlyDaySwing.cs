@@ -93,10 +93,10 @@ namespace cAlgo
         private int lastReportedToHealthchecksOnMinute = -1;
         protected override void OnTick()
         {
-            var lastBarMinute = Bars.Last(1).OpenTime.Minute;
-            if(lastReportedToHealthchecksOnMinute != lastBarMinute) {
+            var lastMinute = Server.Time.Minute;
+            if(lastReportedToHealthchecksOnMinute != lastMinute) {
                 ReportToHealthchecks();
-                lastReportedToHealthchecksOnMinute = lastBarMinute;
+                lastReportedToHealthchecksOnMinute = lastMinute;
             }
         }
 
