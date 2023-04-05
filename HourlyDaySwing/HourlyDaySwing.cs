@@ -18,7 +18,7 @@ using cAlgo.API.Indicators;
 
 namespace cAlgo
 {
-    [Robot(TimeZone = TimeZones.EasternStandardTime, AccessRights = AccessRights.None)]
+    [Robot(TimeZone = TimeZones.EasternStandardTime, AccessRights = AccessRights.FullAccess)]
     public class HourlyDaySwing : Robot
     {
         [Parameter("Bot Identifier", DefaultValue = "HDS")]
