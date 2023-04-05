@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Collections.Generic;
+using System.Net;
 using cAlgo.API;
 using cAlgo.API.Internals;
 using cAlgo.API.Indicators;
@@ -16,7 +17,7 @@ using cAlgo.API.Indicators;
 
 namespace cAlgo
 {
-    [Robot(TimeZone = TimeZones.EasternStandardTime, AccessRights = AccessRights.None)]
+    [Robot(TimeZone = TimeZones.EasternStandardTime, AccessRights = AccessRights.FullAccess)]
     public class RangeTrader : Robot
     {
         [Parameter("Bot Identifier", DefaultValue = "MyBotIdentifier")]
@@ -30,6 +31,9 @@ namespace cAlgo
         
         [Parameter("Max Usable Balance Percent", DefaultValue = 100.0)]
         public double MaxUsableBalancePercent { get; set; }
+        
+        [Parameter("Healthchecks URL")]
+        public string HealthchecksUrl { get; set; }
         
         // Code specific to this bot -----------------------------------------------------------------------------------------
  
@@ -56,6 +60,8 @@ namespace cAlgo
         protected override void OnStart()
         {
             _ema = Indicators.ExponentialMovingAverage(Bars.ClosePrices, SMAPeriod);
+            
+            ReportToHealthchecksIfMarketIsClosed();
         }
 
 
@@ -137,6 +143,16 @@ namespace cAlgo
                 {
                    PlaceMarketOrder(TradeType.Buy, stopLossPips, takeProfitPips);
                 }
+            }
+        }
+        
+        private int lastReportedToHealthchecksOnMinute = -1;
+        protected override void OnTick()
+        {
+            var lastMinute = Server.Time.Minute;
+            if(lastReportedToHealthchecksOnMinute != lastMinute) {
+                ReportToHealthchecks();
+                lastReportedToHealthchecksOnMinute = lastMinute;
             }
         }
 
@@ -235,5 +251,37 @@ namespace cAlgo
                 return null;
             }
         }
+                 
+        private void ReportToHealthchecksIfMarketIsClosed() {
+            var timer = new System.Timers.Timer(60 * 1000);
+            
+            timer.Elapsed += (_, _) => {
+                BeginInvokeOnMainThread(() => {
+                    if(!Symbol.MarketHours.IsOpened()) {
+                        Print("[ReportToHealthchecksIfMarketIsClosed] Market is closed. Reporting to healthchecks from timer thread.");
+                        ReportToHealthchecks();
+                    } else {
+                        Print("[ReportToHealthchecksIfMarketIsClosed] Market is open. Reporting to healthchecks via OnTick.");
+                    }
+                });
+            };
+            
+            timer.Start();   
+       }
+        
+       private void ReportToHealthchecks()
+       {
+            if(IsBacktesting) { return; }
+            
+            if (string.IsNullOrWhiteSpace(HealthchecksUrl))
+                return;
+
+            try {
+                using (var client = new WebClient())
+                {
+                    client.DownloadString(HealthchecksUrl);
+                }
+            } catch (Exception ex) {}
+       }
     }
 }
