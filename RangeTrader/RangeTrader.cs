@@ -64,7 +64,6 @@ namespace cAlgo
             ReportToHealthchecksIfMarketIsClosed();
         }
 
-
         private readonly Dictionary<long, double> _positionMaxPriceMoved = new Dictionary<long, double>();
 
         protected override void OnBar()
