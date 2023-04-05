@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Collections.Generic;
+using System.Net;
 using cAlgo.API;
 using cAlgo.API.Internals;
 using cAlgo.API.Indicators;
@@ -32,6 +33,9 @@ namespace cAlgo
         [Parameter("Max Usable Balance Percent", DefaultValue = 100.0)]
         public double MaxUsableBalancePercent { get; set; }
         
+        [Parameter("Healthchecks URL")]
+        public string HealthchecksUrl { get; set; }
+        
         // Code specific to this bot -----------------------------------------------------------------------------------------
 
 
@@ -55,6 +59,8 @@ namespace cAlgo
         protected override void OnStart()
         {
             _ma = Indicators.SimpleMovingAverage(Bars.ClosePrices, MovingAverage);
+            
+            ReportToHealthchecksIfMarketIsClosed();
         }
 
         protected override void OnBar()
@@ -82,6 +88,16 @@ namespace cAlgo
             }
             
             if(lastBar.OpenTime.Hour == 15) { currentPostion.Close(); }
+        }
+
+        private int lastReportedToHealthchecksOnMinute = -1;
+        protected override void OnTick()
+        {
+            var lastBarMinute = Bars.Last(1).OpenTime.Minute;
+            if(lastReportedToHealthchecksOnMinute != lastBarMinute) {
+                ReportToHealthchecks();
+                lastReportedToHealthchecksOnMinute = lastBarMinute;
+            }
         }
 
         // Shared code for risk management and error handling below ----------------------------------------------------------
@@ -170,5 +186,37 @@ namespace cAlgo
                 return null;
             }
         }
+        
+        private void ReportToHealthchecksIfMarketIsClosed() {
+            var timer = new System.Timers.Timer(60 * 1000);
+            
+            timer.Elapsed += (_, _) => {
+                BeginInvokeOnMainThread(() => {
+                    if(!Symbol.MarketHours.IsOpened()) {
+                        Print("[ReportToHealthchecksIfMarketIsClosed] Market is closed. Reporting to healthchecks from timer thread.");
+                        ReportToHealthchecks();
+                    } else {
+                        Print("[ReportToHealthchecksIfMarketIsClosed] Market is open. Reporting to healthchecks via OnTick.");
+                    }
+                });
+            };
+            
+            timer.Start();   
+       }
+        
+       private void ReportToHealthchecks()
+       {
+            if(IsBacktesting) { return; }
+            
+            if (string.IsNullOrWhiteSpace(HealthchecksUrl))
+                return;
+
+            try {
+                using (var client = new WebClient())
+                {
+                    client.DownloadString(HealthchecksUrl);
+                }
+            } catch (Exception ex) {}
+       }
     }
 }
