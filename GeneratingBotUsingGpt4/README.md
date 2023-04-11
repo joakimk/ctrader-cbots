@@ -1,0 +1,1 @@
+This is experimental instructions for ChatGPT v4 to generate a bot using `Instructions.md` that can run within `Base.cs`.
