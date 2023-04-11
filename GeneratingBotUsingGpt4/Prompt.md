@@ -53,7 +53,4 @@ Here are some instructions before we start.
 
 Here are the specific instructions for this bot.
 
-- If the market goes higher than the last 5 days maximum high on the previous day.
-    - Wait for the market to go back to the low of the previous day.
-    - Enter long 100 pips below that low.
-    - Sell 5 minutes before the close of the day.
+- Add the prompt here
