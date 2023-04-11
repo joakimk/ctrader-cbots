@@ -69,7 +69,7 @@ namespace cAlgo
             
             var currentPostion = CurrentPosition();
             
-            if(lastBar.OpenTime.Hour == 9 && currentPostion == null) {
+            if(lastBar.OpenTime.Hour == 9 && lastBar.OpenTime.Date == Server.Time.Date && currentPostion == null) {
                 if(lastBar.Close > lastBar.Open && lastBar.Close > _ma.Result.Last(1)) {
                     PlaceMarketOrder(TradeType.Buy, InitialStopPips, null, InitialPositionSize); 
                 }
