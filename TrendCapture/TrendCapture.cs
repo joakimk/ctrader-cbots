@@ -42,7 +42,7 @@ using cAlgo.API.Internals;
 namespace cAlgo.Robots
 {
     [Robot(AccessRights = AccessRights.FullAccess, TimeZone = TimeZones.CentralEuropeanStandardTime)]
-    public class CustomPRODTrendCapture : Robot
+    public class SeptemberTrendCapture : Robot
     {
         // Identifies which bot made a trade. Has to be unique for each bot instance.
         [Parameter("Bot identifier")]
@@ -275,6 +275,7 @@ namespace cAlgo.Robots
         
             // Modify stop loss price to entry price
             position.ModifyStopLossPrice(position.EntryPrice);
+            //position.ModifyVolume(position.VolumeInUnits * 2);
         
             // Update persisted position state
             persistedPositionState.HasChangedToMovingStop = true;
@@ -322,7 +323,7 @@ namespace cAlgo.Robots
         // Don't enter when the US market has recently opened. It
         // often generates false signals since it's too volatile then.
         private bool UsMarketRecentlyOpened() {
-            return Server.Time.Hour == 15 && Server.Time.Minute >= 30;
+            return (Server.Time.Hour == 15 && Server.Time.Minute >= 30) || (Server.Time.Hour == 16);
         }
         
         private bool EuMarketRecentlyOpened() {
@@ -540,11 +541,6 @@ namespace cAlgo.Robots
         }
         
         private bool MaxDailyLossHasBeenReached() { 
-            // This explicitly uses History without filtering on this bot instance
-            // to keep losses in check when running multiple bots.
-            var allTradesToday = History.Where(ht => ht.ClosingTime.Date == Server.Time.Date);
-            var profitToday = allTradesToday.Sum(trade => trade.NetProfit);
-            var startingBalance = UsableBalance() - profitToday;
             var maxRiskAmountPerDay = StartingBalanceToday() * (MaxDailyLossPercent / 100.0);
             Print($"MaxDL? Profit {Math.Round(ProfitToday())} < maxRiskAmountPerDay {-Math.Round(maxRiskAmountPerDay)}: {ProfitToday() < -maxRiskAmountPerDay}");
             return ProfitToday() < -maxRiskAmountPerDay;
@@ -559,8 +555,31 @@ namespace cAlgo.Robots
        }
        
        private double ProfitToday() {
+            // This explicitly uses History without filtering on this bot instance
+            // to keep losses in check when running multiple bots.
             var allTradesToday = History.Where(ht => ht.EntryTime.Date == Server.Time.Date).ToArray();
             var profitToday = allTradesToday.Sum(trade => trade.NetProfit);
+            
+            //Print($"There are {Positions.Count} open positions.");
+            foreach(var position in Positions) {
+                // Ignore positions without stop loss (like the cTrader strategy provider hold positions).
+                if(position.StopLoss == null) {
+                    continue;
+                }
+                
+                if(position.TradeType == TradeType.Buy) {
+                    var positionProfit = (double) ((position.StopLoss - position.EntryPrice) / position.Symbol.PipSize) *  position.VolumeInUnits * position.Symbol.TickValue;
+
+                    Print($"Position {position.SymbolName}:{position.EntryPrice}:{position.TradeType} has profit ${positionProfit}");
+                    profitToday += positionProfit;
+                } else {
+                    var pips = (position.EntryPrice - position.StopLoss) / position.Symbol.PipSize;
+                    var positionProfit = (double) (pips * position.VolumeInUnits * position.Symbol.TickValue);
+                    Print($"Position {position.SymbolName}:{position.EntryPrice}:{position.TradeType} has profit {positionProfit}");
+                    profitToday += positionProfit;
+                }
+            }
+            
             return profitToday;
        }
        
