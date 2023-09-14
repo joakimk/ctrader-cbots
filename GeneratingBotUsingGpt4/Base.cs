@@ -28,8 +28,32 @@ namespace cAlgo
         
         // Code specific to this bot -----------------------------------------------------------------------------------------
 
+        protected override void OnBar()
+        {       
+            var position =  CurrentPosition();
+
+        }
 
         // Shared code for risk management and error handling below ----------------------------------------------------------
+
+        protected override void OnStart()
+        {
+            ReportToHealthchecksIfMarketIsClosed();
+        }
+        
+        protected override void OnTick()
+        {
+            // Only run at certain intervals so that backtests can use realistic tick data
+            // that works exactly like live without being super slow.
+            var lastBarMinute = Bars.Last(1).OpenTime.Minute;
+            if(lastRunOnMinute == lastBarMinute) {
+                return;
+            }
+            
+            ReportToHealthchecks();
+
+            lastRunOnMinute = lastBarMinute;
+        }
 
         private void PlaceMarketOrder(TradeType type, double stopLossPips, double? takeProfitPips, double? overrideVolume)
         {
@@ -64,11 +88,34 @@ namespace cAlgo
 
         private double MarginAvailable() => UsableBalance() - Account.Margin;
 
-        private double ProfitToday()
-        {
+       private double ProfitToday() {
+            // This explicitly uses History without filtering on this bot instance
+            // to keep losses in check when running multiple bots.
             var allTradesToday = History.Where(ht => ht.EntryTime.Date == Server.Time.Date).ToArray();
-            return allTradesToday.Sum(trade => trade.NetProfit);
-        }
+            var profitToday = allTradesToday.Sum(trade => trade.NetProfit);
+            
+            Print($"There are {Positions.Count} open positions.");
+            foreach(var position in Positions) {
+                // Ignore positions without stop loss (like the cTrader strategy provider hold positions).
+                if(position.StopLoss == null) {
+                    continue;
+                }
+                
+                if(position.TradeType == TradeType.Buy) {
+                    var positionProfit = (double) ((position.StopLoss - position.EntryPrice) / position.Symbol.PipSize) *  position.VolumeInUnits * position.Symbol.TickValue;
+
+                    Print($"Position {position.SymbolName}:{position.EntryPrice}:{position.TradeType} has profit ${positionProfit}");
+                    profitToday += positionProfit;
+                } else {
+                    var pips = (position.EntryPrice - position.StopLoss) / position.Symbol.PipSize;
+                    var positionProfit = (double) (pips * position.VolumeInUnits * position.Symbol.TickValue);
+                    Print($"Position {position.SymbolName}:{position.EntryPrice}:{position.TradeType} has profit {positionProfit}");
+                    profitToday += positionProfit;
+                }
+            }
+            
+            return profitToday;
+       }
 
         private double StartingBalanceToday() => UsableBalance() - ProfitToday();
 
@@ -93,6 +140,8 @@ namespace cAlgo
             {
                 "SEK" => Math.Floor(volumeInSymbolCurrency),
                 "USD" => volumeInSymbolCurrency / Symbols.GetSymbol("USDSEK").Ask,
+                "GBP" => volumeInSymbolCurrency / Symbols.GetSymbol("GBPSEK").Ask,
+
                 _ => throw new NotSupportedException($"[VolumeToTrade] I don't know how to trade in currency: {Symbol.QuoteAsset.Name}")
             };
         
