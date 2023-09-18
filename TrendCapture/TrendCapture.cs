@@ -238,11 +238,80 @@ namespace cAlgo.Robots
             {
                 return false;
             }
-        
-            HandleMovingStop(position);
-            HandleEarlyProfit(position);
+            
+            if(false) {
+                // WIP: Trail stop by pullbacks to make it more likely it can capture big swings
+                ManageStopAndTakeProfit(position);
+            } else {
+                HandleMovingStop(position);
+                HandleEarlyProfit(position);
+            }
         
             return true;
+        }
+        
+        private double lastChangedStopAt = -1;
+        
+        private void ManageStopAndTakeProfit(Position position) {
+            if(position.TradeType == TradeType.Sell) {
+                // Make break even once that seems reasonable.
+                var breakEvenRatio = 2;
+                var pipsOfLossRepresentedByStopLoss = (position.StopLoss - position.EntryPrice) / Symbol.PipSize;
+
+                if(pipsOfLossRepresentedByStopLoss > 0 && position.Pips * breakEvenRatio > pipsOfLossRepresentedByStopLoss) {
+                   //position.ModifyStopLossPrice(position.EntryPrice - Symbol.Spread);
+                }
+                
+                // Once the market has made a lower high and broken it's previous lower low, move the stop to the lower high.
+                //position.EntryTime
+                var allBarsSinceEntry = Bars.Reverse().TakeWhile((bar) => bar.OpenTime > position.EntryTime).Reverse().ToArray();
+                
+                var lowestSoFar = allBarsSinceEntry.First().Low;
+                var lowChangedAtIndex = 0;
+                
+                double? newestHighInDowntrend = null;
+                
+                for(var i = 0; i < allBarsSinceEntry.Count(); i += 1) {
+                    var bar = allBarsSinceEntry.ElementAt(i);
+                    if(bar.Low < lowestSoFar) {                                            
+                        if(i - lowChangedAtIndex > 2 && i == allBarsSinceEntry.Count() - 1) {
+                            double high = 0;
+                            for(var j = lowChangedAtIndex; j < allBarsSinceEntry.Count(); j += 1) {
+                                var hbar = allBarsSinceEntry.ElementAt(j);
+                                if(hbar.High > high) { high = hbar.High; }
+
+                            }
+                            newestHighInDowntrend = high;
+                            break;
+                        }
+                        
+                        
+                        lowestSoFar = bar.Low;
+                        lowChangedAtIndex = i;
+
+                    }
+                }
+                
+                if(newestHighInDowntrend.HasValue && lastChangedStopAt != newestHighInDowntrend.Value) {
+                    lastChangedStopAt = newestHighInDowntrend.Value;
+                    position.ModifyStopLossPrice(newestHighInDowntrend.Value);
+                    
+                    // this works super bad in backtests, considering opening more positions instead?
+                    //position.ModifyVolume(position.VolumeInUnits * 1.25);
+                    
+
+                    Print($"Moved stop to most recent high {newestHighInDowntrend.Value} in downtrend since we broke the previous low.");
+                    newestHighInDowntrend = null;
+                }
+                
+                
+                //Print(allBarsSinceEntry.Count());
+                //var allBarsSinceEntry
+                
+            } else {
+                HandleMovingStop(position);
+                HandleEarlyProfit(position);
+            }
         }
         
         private void HandleMovingStop(Position position)
@@ -283,7 +352,7 @@ namespace cAlgo.Robots
         }
         
         private void HandleEarlyProfit(Position position)
-        {
+        {        
             // Basing this on win relative to position produced slightly worse results.
             // position.NetProfit <= ((position.Quantity * position.EntryPrice) * (TakeEarlyProfitAtAccountIncreasePercent / 100.0)))
             
@@ -331,6 +400,7 @@ namespace cAlgo.Robots
         }
         
         private void EnterNewPosition() {
+            //if(Server.Time.Hour != 16) { return; }
             if(TradeBothWays) {
                 EnterBullMarket();
                 EnterBearMarket();
